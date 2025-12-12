@@ -1,0 +1,50 @@
+
+export interface PlatformRule {
+  id: string;
+  name: string;
+  type: string;
+  defaultCommission: number;
+  defaultFixedFee: number;
+  threshold?: number; // Price threshold for fixed fee (e.g., 79 for ML)
+  alwaysApplyFixed: boolean; // If true, fixed fee applies regardless of price (e.g., Shopee)
+  color: string;
+  logoUrl: string; // URL for the PNG image
+}
+
+export interface CalculationResult {
+  commissionValue: number;
+  fixedFeeValue: number;
+  taxValue: number;
+  marketingValue: number;
+  totalDeductions: number;
+  netRevenue: number;
+  profit: number;
+  margin: number;
+  roi: number;
+  breakEven: number;
+  totalProductCost: number; // Added to track cost * qty
+}
+
+export interface CalculatorState {
+  cost: number | ''; // Allow empty string for input handling
+  salePrice: number | '';
+  shippingCost: number | '';
+  taxRate: number | '';
+  marketingRate: number | '';
+  otherCosts: number | '';
+  customCommission: number | null; 
+  isKit: boolean; // New feature
+  quantity: number | ''; // New feature
+}
+
+export interface SavedSimulation {
+  id: string;
+  createdAt: number;
+  productName: string;
+  platformId: string;
+  inputs: CalculatorState;
+  resultsSummary: {
+    profit: number;
+    margin: number;
+  };
+}
