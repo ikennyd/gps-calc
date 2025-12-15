@@ -48,3 +48,22 @@ export interface SavedSimulation {
     margin: number;
   };
 }
+
+// Interface para um cenário de planejamento salvo
+export interface PlanningScenario {
+  id: string;
+  createdAt: number;
+  productName: string;
+  platformId: string;
+  targetUnits: number | ''; // Alterado para permitir string vazia durante edição
+  // Salvamos os inputs originais para garantir que o cálculo seja fiel ao momento que foi salvo
+  savedInputs: CalculatorState;
+  // Os resultados são recalculados sempre que a plataforma ou unidades mudam
+  currentResults: {
+    projectedRevenue: number;
+    totalCost: number;
+    projectedProfit: number;
+    margin: number;
+    roi: number;
+  };
+}

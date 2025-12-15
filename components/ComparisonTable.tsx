@@ -1,8 +1,6 @@
-
 import React, { useMemo } from 'react';
 import { PLATFORMS } from '../constants';
-import { CalculatorState, PlatformRule } from '../types';
-import InfoTooltip from './InfoTooltip';
+import { CalculatorState } from '../types';
 
 interface ComparisonTableProps {
   inputs: CalculatorState;
@@ -80,26 +78,36 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ inputs }) => {
       </div>
       
       <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
+        <table className="w-full text-sm text-left border-collapse">
+          <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-4 font-bold tracking-wider">Plataforma</th>
-              <th className="px-6 py-4 font-bold tracking-wider text-right">Taxas Totais</th>
-              <th className="px-6 py-4 font-bold tracking-wider text-right">Margem</th>
-              <th className="px-6 py-4 font-bold tracking-wider text-right">ROI</th>
-              <th className="px-6 py-4 font-bold tracking-wider text-right">Lucro Líquido</th>
+              <th className="px-4 py-4 font-bold tracking-wider sticky left-0 z-10 bg-gray-50 border-r border-gray-100 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)]">
+                Plataforma
+              </th>
+              <th className="px-4 py-4 font-bold tracking-wider text-right whitespace-nowrap min-w-[120px]">
+                Taxas Totais
+              </th>
+              <th className="px-4 py-4 font-bold tracking-wider text-right whitespace-nowrap min-w-[100px]">
+                Margem
+              </th>
+              <th className="px-4 py-4 font-bold tracking-wider text-right whitespace-nowrap min-w-[100px]">
+                ROI
+              </th>
+              <th className="px-4 py-4 font-bold tracking-wider text-right whitespace-nowrap min-w-[140px] bg-gray-100/50">
+                Lucro Líquido
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {comparisons.map((item) => {
-              const isWinner = item.profit === maxProfit && maxProfit > 0; // Check specifically against maxProfit
+              const isWinner = item.profit === maxProfit && maxProfit > 0;
               
               return (
                 <tr 
                   key={item.platform.id} 
-                  className={`hover:bg-gray-50 transition-colors ${isWinner ? 'bg-[#7CFC00]/10' : ''}`}
+                  className={`group transition-colors ${isWinner ? 'bg-[#7CFC00]/5 hover:bg-[#7CFC00]/10' : 'hover:bg-gray-50'}`}
                 >
-                  <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+                  <td className={`px-4 py-4 font-medium text-gray-900 whitespace-nowrap sticky left-0 z-10 border-r border-gray-100 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] ${isWinner ? 'bg-[#f8fdec]' : 'bg-white group-hover:bg-gray-50'}`}>
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center p-1 shadow-sm shrink-0 overflow-hidden">
                         <img 
@@ -113,25 +121,28 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ inputs }) => {
                         <span className="text-[10px] text-gray-500 uppercase">{item.platform.type}</span>
                       </div>
                       {isWinner && (
-                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-[#7CFC00] text-black uppercase tracking-wide">
-                          Melhor
+                        <span className="ml-auto sm:ml-2 inline-flex items-center justify-center w-5 h-5 sm:w-auto sm:h-auto sm:px-2 sm:py-0.5 rounded text-[10px] font-bold bg-[#7CFC00] text-black uppercase tracking-wide">
+                          <span className="hidden sm:inline">Melhor</span>
+                          <span className="sm:hidden">★</span>
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-right text-gray-600">
+                  
+                  {/* Numeric Columns: Font Mono + Tabular Nums for perfect alignment */}
+                  <td className="px-4 py-4 text-right text-gray-600 font-mono tabular-nums whitespace-nowrap">
                     R$ {(item.totalDeductions).toFixed(2)}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-4 py-4 text-right font-mono tabular-nums whitespace-nowrap">
                     <span className={`font-bold ${item.profit >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
                       {item.margin.toFixed(1)}%
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right text-gray-600">
+                  <td className="px-4 py-4 text-right text-gray-600 font-mono tabular-nums whitespace-nowrap">
                     {item.roi.toFixed(0)}%
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className={`text-lg font-black ${item.profit >= 0 ? 'text-black' : 'text-red-600'}`}>
+                  <td className={`px-4 py-4 text-right font-mono tabular-nums whitespace-nowrap border-l border-transparent ${isWinner ? 'bg-[#7CFC00]/10 font-black' : 'bg-gray-50/50'}`}>
+                    <span className={`text-base ${item.profit >= 0 ? 'text-black' : 'text-red-600 font-bold'}`}>
                       R$ {item.profit.toFixed(2)}
                     </span>
                   </td>

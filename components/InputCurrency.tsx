@@ -57,7 +57,7 @@ const InputCurrency: React.FC<InputCurrencyProps> = ({
           onChange={handleChange}
           disabled={disabled}
           placeholder={placeholder}
-          className={`block w-full rounded-lg border-0 py-3.5 ${prefix ? 'pl-10' : 'pl-4'} ${suffix ? 'pr-12' : 'pr-4'} ring-1 ring-inset placeholder:text-gray-300 focus:ring-2 focus:ring-inset sm:text-base transition-colors duration-200 font-medium
+          className={`block w-full rounded-lg border-0 py-3.5 ${prefix ? 'pl-10' : 'pl-4'} ${suffix ? 'pr-12' : 'pr-4'} ring-1 ring-inset placeholder:text-gray-300 focus:ring-2 focus:ring-inset sm:text-base transition-colors duration-200 font-medium text-right
             ${disabled 
               ? 'bg-gray-50 text-gray-400 ring-gray-200 cursor-not-allowed' 
               : highlight 

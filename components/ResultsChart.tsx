@@ -1,5 +1,4 @@
 import React from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { CalculationResult, CalculatorState } from '../types';
 
 interface ResultsChartProps {
@@ -8,58 +7,57 @@ interface ResultsChartProps {
 }
 
 const ResultsChart: React.FC<ResultsChartProps> = ({ inputs, results }) => {
-  const data = [
+  const salePrice = Number(inputs.salePrice) || 0;
+
+  const rawData = [
     { name: 'Custo Produto', value: results.totalProductCost, color: '#9CA3AF' }, // Gray 400
     { name: 'Comissão + Taxas', value: results.commissionValue + results.fixedFeeValue, color: '#000000' }, // Black
     { name: 'Impostos', value: results.taxValue, color: '#4B5563' }, // Gray 600
     { name: 'Frete/Ads/Outros', value: (Number(inputs.shippingCost)||0) + (Number(inputs.otherCosts)||0) + results.marketingValue, color: '#D1D5DB' }, // Gray 300
-    { name: 'Lucro Líquido', value: Math.max(0, results.profit), color: '#7CFC00' }, // Lawn Green (New Success Color)
+    { name: 'Lucro Líquido', value: Math.max(0, results.profit), color: '#7CFC00' }, // Lawn Green
   ];
 
-  // Filter out zero values for cleaner chart
-  const activeData = data.filter(d => d.value > 0);
-
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white px-4 py-3 border border-gray-200 shadow-xl rounded-none">
-          <p className="font-bold text-gray-900 text-sm mb-1 uppercase tracking-wide">{payload[0].name}</p>
-          <p className="text-black font-mono font-bold">R$ {payload[0].value.toFixed(2)}</p>
-        </div>
-      );
-    }
-    return null;
-  };
+  // Process data to filter zeros and calculate percentage
+  const data = rawData
+    .filter(d => d.value > 0)
+    .map(d => ({
+      ...d,
+      percentage: salePrice > 0 ? (d.value / salePrice) * 100 : 0,
+      percentageFormatted: salePrice > 0 ? ((d.value / salePrice) * 100).toFixed(1) : '0.0'
+    }));
 
   return (
-    <div className="h-64 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={activeData}
-            cx="50%"
-            cy="50%"
-            innerRadius={60}
-            outerRadius={80}
-            paddingAngle={2}
-            dataKey="value"
-            cornerRadius={0} 
-            stroke="none"
-          >
-            {activeData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Pie>
-          <Tooltip content={<CustomTooltip />} />
-          <Legend 
-            verticalAlign="bottom" 
-            height={36} 
-            iconType="square" 
-            iconSize={10}
-            wrapperStyle={{ paddingTop: '24px', fontSize: '11px', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
+    <div className="w-full space-y-6">
+      {data.map((item, index) => (
+        <div key={index}>
+          <div className="flex justify-between items-end mb-2">
+            <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+              {item.name}
+            </span>
+            <div className="text-right flex items-center gap-2">
+               <span className="text-xs font-medium text-gray-500 font-mono">
+                 R$ {item.value.toFixed(2)}
+               </span>
+               <span className="text-xs font-black text-gray-900">
+                 {item.percentageFormatted}%
+               </span>
+            </div>
+          </div>
+          
+          <div className="h-4 w-full bg-gray-100 rounded-sm overflow-hidden">
+            <div 
+              className="h-full transition-all duration-700 ease-out rounded-sm"
+              style={{ width: `${Math.min(item.percentage, 100)}%`, backgroundColor: item.color }}
+            />
+          </div>
+        </div>
+      ))}
+
+      {data.length === 0 && (
+        <div className="text-center py-8 text-gray-400 text-xs uppercase tracking-widest">
+          Sem dados para exibir
+        </div>
+      )}
     </div>
   );
 };
