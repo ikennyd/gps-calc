@@ -67,3 +67,25 @@ export interface PlanningScenario {
     roi: number;
   };
 }
+
+// --- NEW TYPES FOR MANAGEMENT SYSTEM ---
+
+export interface Client {
+  id: string;
+  name: string;
+  platforms: string[]; // IDs of platforms enabled for this client
+  createdAt: number;
+  isActive: boolean;
+}
+
+export interface WeeklyMetric {
+  id: string;
+  clientId: string;
+  platformId: string;
+  weekStart: string; // YYYY-MM-DD
+  revenue: number;
+  adSpend: number;
+  impressions: number;
+  clicks: number;
+  orders: number;
+}

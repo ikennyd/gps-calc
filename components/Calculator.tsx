@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PLATFORMS, INITIAL_STATE } from '../constants';
 import { CalculatorState, CalculationResult, SavedSimulation, PlanningScenario } from '../types';
 import InputCurrency from './InputCurrency';
@@ -6,18 +6,12 @@ import ResultsChart from './ResultsChart';
 import InfoTooltip from './InfoTooltip';
 import ComparisonTable from './ComparisonTable';
 
-// Icons simples
-const CalculatorIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
-);
-const TargetIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-);
+// Icons
 const TrashIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
 );
 
-// --- HELPER FUNCTION: CÁLCULO DE CENÁRIO (FORA DO COMPONENTE) ---
+// --- HELPER FUNCTION: CÁLCULO DE CENÁRIO ---
 const calculateScenarioResults = (inputs: CalculatorState, platformId: string, units: number | '') => {
   const platform = PLATFORMS.find(p => p.id === platformId) || PLATFORMS[0];
   const safeNum = (val: number | '') => (val === '' ? 0 : val);
@@ -35,7 +29,7 @@ const calculateScenarioResults = (inputs: CalculatorState, platformId: string, u
   const isMercadoLivre = platformId.startsWith('ml_');
   const isMlBelow79 = isMercadoLivre && salePrice < 79;
 
-  // Lógica de Frete (Pago pelo Vendedor?)
+  // Lógica de Frete
   const shippingCost = (isShopeeFree || isMlBelow79) ? 0 : inputShipping;
 
   // Comissão
@@ -52,23 +46,22 @@ const calculateScenarioResults = (inputs: CalculatorState, platformId: string, u
     }
   }
 
-  // Outros Custos Variáveis
+  // Outros Custos
   const taxValue = salePrice * (taxRate / 100);
   const marketingValue = salePrice * (marketingRate / 100);
 
-  // Totais Unitários
+  // Totais
   const totalDeductions = commissionValue + fixedFeeValue + taxValue + marketingValue + shippingCost + otherCosts;
   const totalProductCost = cost * quantity;
   const profitPerUnit = salePrice - totalDeductions - totalProductCost;
 
-  // Agregados pelo Volume (Units)
-  const safeUnits = units === '' ? 0 : units; // Trata string vazia como 0 para cálculos
+  // Agregados
+  const safeUnits = units === '' ? 0 : units;
   const projectedRevenue = salePrice * safeUnits;
-  const totalCost = (totalProductCost + totalDeductions) * safeUnits; // Custo Total = Tudo que sai (Produto + Taxas + Frete)
+  const totalCost = (totalProductCost + totalDeductions) * safeUnits;
   const projectedProfit = profitPerUnit * safeUnits;
 
   const margin = salePrice > 0 ? (profitPerUnit / salePrice) * 100 : 0;
-  // ROI baseado no Custo do Produto (consistente com a calculadora principal)
   const roi = totalProductCost > 0 ? (profitPerUnit / totalProductCost) * 100 : 0;
 
   return {
@@ -80,8 +73,11 @@ const calculateScenarioResults = (inputs: CalculatorState, platformId: string, u
   };
 };
 
-const Calculator: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'calculator' | 'planning'>('calculator');
+interface CalculatorProps {
+  view: 'calculator' | 'planning';
+}
+
+const Calculator: React.FC<CalculatorProps> = ({ view }) => {
   const [selectedPlatformId, setSelectedPlatformId] = useState<string>(PLATFORMS[0].id);
   // @ts-ignore
   const [inputs, setInputs] = useState<CalculatorState>(INITIAL_STATE);
@@ -187,7 +183,7 @@ const Calculator: React.FC = () => {
     };
   }, [inputs, selectedPlatform, isShopeeFree, isMercadoLivre]);
 
-  // --- HANDLERS DO PLANEJAMENTO ---
+  // --- HANDLERS ---
 
   const handleAddPlanningScenario = () => {
     if (!productName.trim()) {
@@ -201,20 +197,15 @@ const Calculator: React.FC = () => {
       productName: productName.trim(),
       platformId: selectedPlatformId,
       targetUnits: targetVolume,
-      savedInputs: { ...inputs }, // Snapshot dos inputs
+      savedInputs: { ...inputs }, 
       currentResults: calculateScenarioResults({ ...inputs }, selectedPlatformId, targetVolume)
     };
 
     const updatedScenarios = [newScenario, ...planningScenarios];
     setPlanningScenarios(updatedScenarios);
     localStorage.setItem('gps_planning_scenarios', JSON.stringify(updatedScenarios));
-    
-    // Opcional: Salvar também no histórico antigo se desejar manter a lista lateral
-    // const newHistoryItem: SavedSimulation = { ... }
-    // Mas focaremos no cenário novo.
-    
     setProductName('');
-    setActiveTab('planning');
+    alert("Cenário salvo na aba Planejamento!");
   };
 
   const handleUpdateScenarioPlatform = (id: string, newPlatformId: string) => {
@@ -273,8 +264,7 @@ const Calculator: React.FC = () => {
 
   const currentCommission = inputs.customCommission ?? selectedPlatform.defaultCommission;
 
-  // Calculos para a aba de Planejamento (Visualização "Preço Sugerido")
-  // Ainda precisamos dessa função para mostrar os cards de sugestão de preço na aba Planning
+  // Calculos para a aba de Planejamento 
   const calculatePriceForMargin = (targetMarginPercent: number | '') => {
       const margin = targetMarginPercent === '' ? 0 : targetMarginPercent;
       const getVal = (val: number | '') => (val === '' ? 0 : val);
@@ -296,48 +286,16 @@ const Calculator: React.FC = () => {
   const breakEvenPrice = calculatePriceForMargin(0);
   const targetPrice = calculatePriceForMargin(targetMargin);
 
-  // Variables for Planning Projection (ADDED)
   const safeTargetVolume = targetVolume === '' ? 0 : targetVolume;
-  const safeTargetMargin = targetMargin === '' ? 0 : targetMargin;
   const projectedRevenue = targetPrice * safeTargetVolume;
-  const projectedProfit = projectedRevenue * (safeTargetMargin / 100);
+  const projectedProfit = projectedRevenue * ((targetMargin === '' ? 0 : targetMargin) / 100);
 
   return (
-    <div className="pb-36 sm:pb-12 bg-[#f3f4f6] min-h-screen">
-      
-      {/* Header Section */}
-      <div className="bg-black text-white pt-8 pb-24 px-4 mb-6">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-2xl sm:text-4xl font-bold tracking-tight mb-2">Calculadora de Lucro</h1>
-          <p className="text-gray-400 text-sm sm:text-base max-w-xl mb-6">
-            Simule a rentabilidade do seu negócio com precisão estratégica.
-          </p>
-          
-          {/* TABS NAVIGATION */}
-          <div className="flex gap-2 p-1 bg-gray-900/50 backdrop-blur-sm rounded-lg w-fit">
-            <button 
-              onClick={() => setActiveTab('calculator')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'calculator' ? 'bg-white text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-            >
-              <CalculatorIcon />
-              Calculadora
-            </button>
-            <button 
-              onClick={() => setActiveTab('planning')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'planning' ? 'bg-[#7CFC00] text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-            >
-              <TargetIcon />
-              Planejamento
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20">
+    <div className="bg-[#f3f4f6] min-h-full pb-32 lg:pb-12 p-4 sm:p-6 lg:p-8">
         
-        {/* === ABA: CALCULADORA (VISUALIZAÇÃO PADRÃO) === */}
-        {activeTab === 'calculator' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* === ABA: CALCULADORA === */}
+        {view === 'calculator' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl mx-auto">
             
             {/* LEFT COLUMN: INPUTS */}
             <div className="lg:col-span-7 space-y-4 sm:space-y-5">
@@ -345,7 +303,7 @@ const Calculator: React.FC = () => {
               {/* Platform Selection */}
               <div className="bg-white rounded-sm shadow-sm border border-gray-200 p-5 sm:p-8">
                 <div className="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
-                  <div className="bg-black text-white p-2">
+                  <div className="bg-black text-white p-2 rounded">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
                   </div>
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">Plataforma</h2>
@@ -402,7 +360,7 @@ const Calculator: React.FC = () => {
               <div className="bg-white rounded-sm shadow-sm border border-gray-200 p-5 sm:p-8">
                  <div className="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
                    <div className="flex items-center gap-3">
-                      <div className="bg-gray-200 text-black p-2">
+                      <div className="bg-gray-200 text-black p-2 rounded">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                       </div>
                       <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">Custos</h2>
@@ -476,91 +434,8 @@ const Calculator: React.FC = () => {
                    prefix=""
                    suffix="%"
                  />
-
-                  {/* NOVO CAMPO: CALCULAR POR META DE MARGEM */}
-                  <div className="sm:col-span-2 border-t border-gray-100 mt-2 pt-4">
-                      <div className="flex flex-col sm:flex-row gap-4 items-end">
-                          <div className="w-full sm:w-1/2">
-                              <InputCurrency 
-                                  label="Meta de Margem Desejada"
-                                  value={targetMargin}
-                                  onChange={(val) => setTargetMargin(val)}
-                                  prefix=""
-                                  suffix="%"
-                                  placeholder="20"
-                              />
-                          </div>
-                          <div className="w-full sm:w-1/2">
-                               <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Preço Sugerido</label>
-                               <div className="relative rounded-lg shadow-sm">
-                                  <div className="block w-full rounded-lg border-0 py-3.5 pl-4 pr-20 bg-green-50 text-green-700 ring-1 ring-inset ring-green-200 font-bold sm:text-lg flex items-center">
-                                      R$ {targetPrice > 0 ? targetPrice.toFixed(2) : '---'}
-                                  </div>
-                                  {targetPrice > 0 && (
-                                       <button 
-                                          onClick={() => handleInputChange('salePrice', Number(targetPrice.toFixed(2)))}
-                                          className="absolute right-2 top-2 bottom-2 bg-green-200 hover:bg-green-300 text-green-800 text-[10px] font-bold uppercase px-3 rounded transition-colors"
-                                       >
-                                          Aplicar
-                                       </button>
-                                  )}
-                               </div>
-                          </div>
-                      </div>
-                  </div>
-
                </div>
               </div>
-              
-              {/* History List */}
-              {history.length > 0 && (
-                <div className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden">
-                  <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                     <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wide">Histórico Salvo</h3>
-                     <span className="text-xs text-gray-400">{history.length} simulações</span>
-                  </div>
-                  <div className="max-h-60 overflow-y-auto divide-y divide-gray-100">
-                    {history.map((sim) => {
-                       const platform = PLATFORMS.find(p => p.id === sim.platformId);
-                       return (
-                       <div 
-                         key={sim.id} 
-                         onClick={() => handleLoadSimulation(sim)}
-                         className="p-4 hover:bg-gray-50 cursor-pointer transition-colors flex justify-between items-center group"
-                       >
-                           <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full border border-gray-200 bg-white flex items-center justify-center p-1">
-                                  <img src={platform?.logoUrl} alt={platform?.name} className="w-full h-full object-contain" />
-                              </div>
-                              <div>
-                                 <p className="font-bold text-sm text-gray-900">{sim.productName}</p>
-                                 <div className="flex gap-2 text-xs text-gray-500">
-                                   <span>{new Date(sim.createdAt).toLocaleDateString()}</span>
-                                   <span>•</span>
-                                   <span>{platform?.name}</span>
-                                 </div>
-                              </div>
-                           </div>
-                           <div className="flex items-center gap-4">
-                              <div className="text-right">
-                                 <p className={`font-bold text-sm ${sim.resultsSummary.profit >= 0 ? 'text-black' : 'text-red-600'}`}>
-                                   R$ {sim.resultsSummary.profit.toFixed(2)}
-                                 </p>
-                                 <p className="text-xs text-gray-400">{sim.resultsSummary.margin.toFixed(0)}% Margem</p>
-                              </div>
-                              <button 
-                                onClick={(e) => handleDeleteSimulation(sim.id, e)}
-                                className="text-gray-300 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-all"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                              </button>
-                           </div>
-                       </div>
-                       )
-                    })}
-                  </div>
-                </div>
-              )}
 
               {/* Save Simulation Card */}
               <div className="bg-white rounded-sm shadow-sm border border-gray-200 p-5 sm:p-6 flex flex-col sm:flex-row gap-4 items-end">
@@ -693,9 +568,9 @@ const Calculator: React.FC = () => {
           </div>
         )}
 
-        {/* === ABA: PLANEJAMENTO (NOVA) === */}
-        {activeTab === 'planning' && (
-          <div className="space-y-6">
+        {/* === ABA: PLANEJAMENTO === */}
+        {view === 'planning' && (
+          <div className="space-y-6 max-w-7xl mx-auto">
             
             {/* INSTRUÇÕES E INPUTS DE META */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -703,7 +578,7 @@ const Calculator: React.FC = () => {
                 <div className="bg-black text-white p-6 rounded-sm shadow-lg">
                   <h3 className="font-bold text-lg mb-2">Simulação Rápida</h3>
                   <p className="text-gray-400 text-sm mb-4 leading-relaxed">
-                    Descubra o preço ideal baseado na sua meta de margem para a plataforma selecionada na calculadora.
+                    Descubra o preço ideal baseado na sua meta de margem para a plataforma selecionada.
                   </p>
                   <div className="space-y-4">
                     <div>
@@ -885,10 +760,9 @@ const Calculator: React.FC = () => {
 
           </div>
         )}
-      </div>
 
       {/* MOBILE STICKY BOTTOM BAR (Apenas na calculadora) */}
-      {activeTab === 'calculator' && (
+      {view === 'calculator' && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 sm:p-4 shadow-[0_-4px_15px_rgba(0,0,0,0.08)] lg:hidden z-50">
            <div className="max-w-7xl mx-auto flex justify-between items-center">
               <div className={`flex flex-col px-3 py-1 rounded ${results.profit >= 0 ? 'bg-[#7CFC00]' : 'bg-red-50'}`}>
