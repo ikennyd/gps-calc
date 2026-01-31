@@ -29,8 +29,9 @@ const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, onUpdat
   // Unique platform names for selection
   const uniqueMarketplaces = Array.from(new Set(PLATFORMS.map(p => p.name))).map(name => {
       const p = PLATFORMS.find(pl => pl.name === name);
-      return { name: p?.name, logo: p?.logoUrl, id: p?.id.split('_')[0] };
-  });
+      if (!p) return { name: '', logo: '', id: '' };
+      return { name: p.name, logo: p.logoUrl, id: p.id.split('_')[0] };
+  }).filter(m => m.name !== '');
 
   const handleTogglePlatform = (name: string) => {
     if (selectedPlatforms.includes(name)) {

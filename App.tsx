@@ -80,7 +80,7 @@ function App() {
     setMetrics(prev => [...prev, newMetric]);
   };
 
-  const NavItem = ({ view, icon: Icon, label }: { view: ViewState, icon: any, label: string }) => {
+  const NavItem = ({ view, icon: Icon, label }: { view: ViewState, icon: React.ComponentType, label: string }) => {
     const isActive = currentView === view;
     return (
       <button 

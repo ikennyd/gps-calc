@@ -70,6 +70,12 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({ isOpen, onClose, client
         return;
     }
 
+    // Validação adicional: pelo menos uma métrica deve ter valor
+    if (safeRevenue === 0 && safeAdSpend === 0 && safeOrders === 0 && safeImpressions === 0 && safeClicks === 0) {
+        alert("Preencha pelo menos uma métrica (Faturamento, Ads, Pedidos, Impressões ou Cliques).");
+        return;
+    }
+
     const newMetric: WeeklyMetric = {
         id: crypto.randomUUID(),
         clientId: selectedClientId,

@@ -79,8 +79,7 @@ interface CalculatorProps {
 
 const Calculator: React.FC<CalculatorProps> = ({ view }) => {
   const [selectedPlatformId, setSelectedPlatformId] = useState<string>(PLATFORMS[0].id);
-  // @ts-ignore
-  const [inputs, setInputs] = useState<CalculatorState>(INITIAL_STATE);
+  const [inputs, setInputs] = useState<CalculatorState>(INITIAL_STATE as CalculatorState);
   
   // Estados para o Planejamento
   const [targetMargin, setTargetMargin] = useState<number | ''>(20); 
@@ -96,15 +95,27 @@ const Calculator: React.FC<CalculatorProps> = ({ view }) => {
     const savedHistory = localStorage.getItem('gps_calc_history');
     if (savedHistory) {
       try {
-        setHistory(JSON.parse(savedHistory));
-      } catch (e) { console.error(e); }
+        const parsed = JSON.parse(savedHistory);
+        if (Array.isArray(parsed)) {
+          setHistory(parsed);
+        }
+      } catch (e) {
+        console.error('Erro ao carregar histórico:', e);
+        localStorage.removeItem('gps_calc_history');
+      }
     }
 
     const savedScenarios = localStorage.getItem('gps_planning_scenarios');
     if (savedScenarios) {
       try {
-        setPlanningScenarios(JSON.parse(savedScenarios));
-      } catch (e) { console.error(e); }
+        const parsed = JSON.parse(savedScenarios);
+        if (Array.isArray(parsed)) {
+          setPlanningScenarios(parsed);
+        }
+      } catch (e) {
+        console.error('Erro ao carregar cenários:', e);
+        localStorage.removeItem('gps_planning_scenarios');
+      }
     }
   }, []);
 
@@ -244,7 +255,7 @@ const Calculator: React.FC<CalculatorProps> = ({ view }) => {
     localStorage.setItem('gps_planning_scenarios', JSON.stringify(updated));
   };
 
-  const handleInputChange = (field: keyof CalculatorState, value: any) => {
+  const handleInputChange = (field: keyof CalculatorState, value: CalculatorState[keyof CalculatorState]) => {
     setInputs(prev => ({ ...prev, [field]: value }));
   };
 

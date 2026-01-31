@@ -23,10 +23,10 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, la
     if (value) {
       const [y, m, d] = value.split('-').map(Number);
       // Create date using UTC to avoid timezone shifts on simple yyyy-mm-dd strings
-      const date = new Date(y, m - 1, d); 
+      const date = new Date(y, m - 1, d);
       setCurrentDate(date);
     }
-  }, []); // Only run once on mount regarding value init for navigation
+  }, [value]); // Re-run when value changes to sync navigation
 
   // Close when clicking outside
   useEffect(() => {

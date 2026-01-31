@@ -392,10 +392,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({ clients, metrics, onOpenD
                         </thead>
                         <tbody className="divide-y divide-gray-800/50">
                             {reportRows.map((row, index) => {
-                                // @ts-ignore
-                                const valCurrent = current ? current[row.key] : 0;
-                                // @ts-ignore
-                                const valPrev = prev ? prev[row.key] : 0;
+                                const valCurrent = current ? current[row.key as keyof typeof current] as number : 0;
+                                const valPrev = prev ? prev[row.key as keyof typeof prev] as number : 0;
                                 
                                 return (
                                     <tr key={index} className="hover:bg-white/5 transition-colors group">
@@ -668,9 +666,9 @@ const DashboardView: React.FC<DashboardViewProps> = ({ clients, metrics, onOpenD
                            <span className="text-2xl font-bold text-white">{formatNumber(totals.clicks)}</span>
                        </div>
                        <div className="h-3 w-full bg-gray-800 rounded-full overflow-hidden">
-                           <div 
-                              className="h-full bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]" 
-                              style={{ width: totals.impressions > 0 ? `${Math.min(((totals.clicks / totals.impressions) * 100) * 10, 100)}%` : '0%' }}
+                           <div
+                              className="h-full bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+                              style={{ width: totals.impressions > 0 ? `${Math.min((totals.clicks / totals.impressions) * 100, 100)}%` : '0%' }}
                             ></div>
                        </div>
                        <div className="mt-1 flex justify-between text-xs">
@@ -693,14 +691,14 @@ const DashboardView: React.FC<DashboardViewProps> = ({ clients, metrics, onOpenD
                            <span className="text-2xl font-bold text-white">{totals.orders}</span>
                        </div>
                        <div className="h-3 w-full bg-gray-800 rounded-full overflow-hidden">
-                           <div 
-                              className="h-full bg-[#7CFC00] rounded-full shadow-[0_0_10px_rgba(124,252,0,0.5)]" 
-                              style={{ width: totals.clicks > 0 ? `${Math.min(((totals.orders / totals.clicks) * 100) * 5, 100)}%` : '0%' }}
+                           <div
+                              className="h-full bg-[#7CFC00] rounded-full shadow-[0_0_10px_rgba(124,252,0,0.5)]"
+                              style={{ width: totals.clicks > 0 ? `${Math.min((totals.orders / totals.clicks) * 100, 100)}%` : '0%' }}
                            ></div>
                        </div>
                        <div className="mt-1 flex justify-between text-xs">
                            <span className="text-gray-500">Taxa de Conversão</span>
-                           <span className="text--[#7CFC00] font-medium">
+                           <span className="text-[#7CFC00] font-medium">
                                {totals.clicks > 0 ? ((totals.orders / totals.clicks) * 100).toFixed(2) : 0}%
                            </span>
                        </div>
