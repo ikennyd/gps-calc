@@ -3,6 +3,8 @@ import Calculator from './components/Calculator';
 import DashboardView from './components/DashboardView';
 import ClientsView from './components/ClientsView';
 import DataEntryModal from './components/DataEntryModal';
+import ErrorBoundary from './components/ErrorBoundary';
+import { ToastContainer } from './components/Toast';
 import { Client, WeeklyMetric } from './types';
 
 // Icons SVG
@@ -100,7 +102,9 @@ function App() {
   };
 
   return (
+    <ErrorBoundary>
     <div className="flex h-screen bg-[#F3F4F6] text-gray-900 font-sans selection:bg-gray-900 selection:text-white overflow-hidden">
+      <ToastContainer />
       
       {/* MOBILE HEADER (Only Visible on LG screens and below) */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#0f1115] z-30 flex items-center justify-between px-4 shadow-md">
@@ -217,6 +221,7 @@ function App() {
       />
 
     </div>
+    </ErrorBoundary>
   );
 }
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Client, WeeklyMetric } from '../types';
 import { PLATFORMS } from '../constants';
+import { toast } from './Toast';
 import InputCurrency from './InputCurrency';
 import CustomDatePicker from './CustomDatePicker';
 
@@ -66,13 +67,13 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({ isOpen, onClose, client
 
   const handleSave = () => {
     if (!selectedClientId || !selectedPlatformId || !weekDate) {
-        alert("Preencha os campos obrigatórios (Cliente, Plataforma, Data).");
+        toast.warning("Preencha os campos obrigatórios (Cliente, Plataforma, Data).");
         return;
     }
 
     // Validação adicional: pelo menos uma métrica deve ter valor
     if (safeRevenue === 0 && safeAdSpend === 0 && safeOrders === 0 && safeImpressions === 0 && safeClicks === 0) {
-        alert("Preencha pelo menos uma métrica (Faturamento, Ads, Pedidos, Impressões ou Cliques).");
+        toast.warning("Preencha pelo menos uma métrica (Faturamento, Ads, Pedidos, Impressões ou Cliques).");
         return;
     }
 
@@ -89,6 +90,7 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({ isOpen, onClose, client
     };
 
     onSave(newMetric);
+    toast.success("Dados salvos com sucesso!");
     onClose();
   };
 

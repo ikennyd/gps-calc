@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PLATFORMS, INITIAL_STATE } from '../constants';
+import { STORAGE_KEYS, getFromStorage, saveToStorage } from '../constants/storage';
 import { CalculatorState, CalculationResult, SavedSimulation, PlanningScenario } from '../types';
+import { toast } from './Toast';
 import InputCurrency from './InputCurrency';
 import ResultsChart from './ResultsChart';
 import InfoTooltip from './InfoTooltip';
@@ -92,31 +94,11 @@ const Calculator: React.FC<CalculatorProps> = ({ view }) => {
 
   // Load history & Scenarios
   useEffect(() => {
-    const savedHistory = localStorage.getItem('gps_calc_history');
-    if (savedHistory) {
-      try {
-        const parsed = JSON.parse(savedHistory);
-        if (Array.isArray(parsed)) {
-          setHistory(parsed);
-        }
-      } catch (e) {
-        console.error('Erro ao carregar histórico:', e);
-        localStorage.removeItem('gps_calc_history');
-      }
-    }
+    const savedHistory = getFromStorage<SavedSimulation[]>(STORAGE_KEYS.CALC_HISTORY, []);
+    setHistory(savedHistory);
 
-    const savedScenarios = localStorage.getItem('gps_planning_scenarios');
-    if (savedScenarios) {
-      try {
-        const parsed = JSON.parse(savedScenarios);
-        if (Array.isArray(parsed)) {
-          setPlanningScenarios(parsed);
-        }
-      } catch (e) {
-        console.error('Erro ao carregar cenários:', e);
-        localStorage.removeItem('gps_planning_scenarios');
-      }
-    }
+    const savedScenarios = getFromStorage<PlanningScenario[]>(STORAGE_KEYS.PLANNING_SCENARIOS, []);
+    setPlanningScenarios(savedScenarios);
   }, []);
 
   const selectedPlatform = useMemo(() => 
@@ -198,7 +180,7 @@ const Calculator: React.FC<CalculatorProps> = ({ view }) => {
 
   const handleAddPlanningScenario = () => {
     if (!productName.trim()) {
-      alert("Por favor, insira o nome do produto para salvar.");
+      toast.warning("Por favor, insira o nome do produto para salvar.");
       return;
     }
 
@@ -208,15 +190,15 @@ const Calculator: React.FC<CalculatorProps> = ({ view }) => {
       productName: productName.trim(),
       platformId: selectedPlatformId,
       targetUnits: targetVolume,
-      savedInputs: { ...inputs }, 
+      savedInputs: { ...inputs },
       currentResults: calculateScenarioResults({ ...inputs }, selectedPlatformId, targetVolume)
     };
 
     const updatedScenarios = [newScenario, ...planningScenarios];
     setPlanningScenarios(updatedScenarios);
-    localStorage.setItem('gps_planning_scenarios', JSON.stringify(updatedScenarios));
+    saveToStorage(STORAGE_KEYS.PLANNING_SCENARIOS, updatedScenarios);
     setProductName('');
-    alert("Cenário salvo na aba Planejamento!");
+    toast.success("Cenário salvo na aba Planejamento!");
   };
 
   const handleUpdateScenarioPlatform = (id: string, newPlatformId: string) => {
@@ -231,7 +213,7 @@ const Calculator: React.FC<CalculatorProps> = ({ view }) => {
       return sc;
     });
     setPlanningScenarios(updated);
-    localStorage.setItem('gps_planning_scenarios', JSON.stringify(updated));
+    saveToStorage(STORAGE_KEYS.PLANNING_SCENARIOS, updated);
   };
 
   const handleUpdateScenarioUnits = (id: string, newUnits: number | '') => {
@@ -246,13 +228,13 @@ const Calculator: React.FC<CalculatorProps> = ({ view }) => {
       return sc;
     });
     setPlanningScenarios(updated);
-    localStorage.setItem('gps_planning_scenarios', JSON.stringify(updated));
+    saveToStorage(STORAGE_KEYS.PLANNING_SCENARIOS, updated);
   };
 
   const handleDeleteScenario = (id: string) => {
     const updated = planningScenarios.filter(sc => sc.id !== id);
     setPlanningScenarios(updated);
-    localStorage.setItem('gps_planning_scenarios', JSON.stringify(updated));
+    saveToStorage(STORAGE_KEYS.PLANNING_SCENARIOS, updated);
   };
 
   const handleInputChange = (field: keyof CalculatorState, value: CalculatorState[keyof CalculatorState]) => {
@@ -270,7 +252,7 @@ const Calculator: React.FC<CalculatorProps> = ({ view }) => {
     e.stopPropagation();
     const updatedHistory = history.filter(item => item.id !== id);
     setHistory(updatedHistory);
-    localStorage.setItem('gps_calc_history', JSON.stringify(updatedHistory));
+    saveToStorage(STORAGE_KEYS.CALC_HISTORY, updatedHistory);
   };
 
   const currentCommission = inputs.customCommission ?? selectedPlatform.defaultCommission;
