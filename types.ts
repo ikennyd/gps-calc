@@ -32,6 +32,7 @@ export interface CalculatorState {
   taxRate: number | '';
   marketingRate: number | '';
   otherCosts: number | '';
+  weight: number | ''; // NOVO: Peso para frete ML 2026
   customCommission: number | null; 
   isKit: boolean; // New feature
   quantity: number | ''; // New feature
@@ -49,16 +50,13 @@ export interface SavedSimulation {
   };
 }
 
-// Interface para um cenário de planejamento salvo
 export interface PlanningScenario {
   id: string;
   createdAt: number;
   productName: string;
   platformId: string;
-  targetUnits: number | ''; // Alterado para permitir string vazia durante edição
-  // Salvamos os inputs originais para garantir que o cálculo seja fiel ao momento que foi salvo
+  targetUnits: number | ''; 
   savedInputs: CalculatorState;
-  // Os resultados são recalculados sempre que a plataforma ou unidades mudam
   currentResults: {
     projectedRevenue: number;
     totalCost: number;
@@ -67,8 +65,6 @@ export interface PlanningScenario {
     roi: number;
   };
 }
-
-// --- NEW TYPES FOR MANAGEMENT SYSTEM ---
 
 export interface Client {
   id: string;
