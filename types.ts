@@ -89,3 +89,47 @@ export interface WeeklyMetric {
   clicks: number;
   orders: number;
 }
+
+// --- WINTER PLANNING 2026 TYPES ---
+
+export interface CostItem {
+  id: string;
+  name: string;
+  costPerUnit: number; // Custo por unidade ou por kg
+  paymentTerm: number; // Prazo em dias (0 = à vista)
+  isPerKg?: boolean; // Se o custo é por kg (para calcular rendimento)
+}
+
+export interface WinterProduct {
+  id: string;
+  name: string;
+  costItems: CostItem[];
+  kgYield: number; // Quantas unidades 1kg rende (ex: 3)
+  salePrice: number;
+  createdAt: number;
+}
+
+export interface MonthlyTarget {
+  month: string; // "2026-02", "2026-03", etc.
+  monthLabel: string; // "Fevereiro", "Março", etc.
+  targetUnits: number;
+  targetRevenue: number; // Calculado: targetUnits * salePrice
+}
+
+export interface WinterScenario {
+  id: string;
+  name: string; // Ex: "Cenário Otimista", "Cenário Conservador"
+  product: WinterProduct;
+  monthlyTargets: MonthlyTarget[];
+  createdAt: number;
+}
+
+export interface CashFlowEntry {
+  month: string;
+  monthLabel: string;
+  revenue: number; // Entrada (verde)
+  immediatePayments: number; // Saída à vista (vermelho)
+  deferredPayments: number; // Saída a prazo (laranja)
+  netCashFlow: number; // Saldo do mês
+  accumulatedCashFlow: number; // Saldo acumulado
+}

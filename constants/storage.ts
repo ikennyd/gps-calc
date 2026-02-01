@@ -3,6 +3,7 @@ export const STORAGE_KEYS = {
   PLANNING_SCENARIOS: 'gps_planning_scenarios',
   CLIENTS: 'gps_clients',
   METRICS: 'gps_weekly_metrics',
+  WINTER_SCENARIOS: 'gps_winter_scenarios',
 } as const;
 
 export type StorageKey = typeof STORAGE_KEYS[keyof typeof STORAGE_KEYS];

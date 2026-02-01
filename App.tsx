@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Calculator from './components/Calculator';
 import DashboardView from './components/DashboardView';
 import ClientsView from './components/ClientsView';
+import WinterPlanningView from './components/WinterPlanningView';
 import DataEntryModal from './components/DataEntryModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToastContainer } from './components/Toast';
@@ -32,8 +33,11 @@ const UserIcon = () => (
 const UsersIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
 );
+const SnowflakeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="2" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="22"/><path d="m20 16-4-4 4-4"/><path d="m4 8 4 4-4 4"/><path d="m16 4-4 4-4-4"/><path d="m8 20 4-4 4 4"/></svg>
+);
 
-type ViewState = 'dashboard' | 'calculator' | 'planning' | 'clients';
+type ViewState = 'dashboard' | 'calculator' | 'planning' | 'clients' | 'winter';
 
 // Initial Dummy Data - Dynamic Dates to fix Calendar filter issue
 const getTodayStr = () => new Date().toISOString().split('T')[0];
@@ -156,6 +160,7 @@ function App() {
           <NavItem view="clients" icon={UsersIcon} label="Clientes" />
           <NavItem view="calculator" icon={CalculatorIcon} label="Calculadora" />
           <NavItem view="planning" icon={TargetIcon} label="Planejamento" />
+          <NavItem view="winter" icon={SnowflakeIcon} label="Inverno 2026" />
         </nav>
 
         {/* Sidebar Footer (User Profile) */}
@@ -183,6 +188,7 @@ function App() {
              {currentView === 'planning' && 'Planejamento de Preço'}
              {currentView === 'dashboard' && 'Visão Geral'}
              {currentView === 'clients' && 'Gestão de Clientes'}
+             {currentView === 'winter' && 'Planejamento Inverno 2026'}
            </h1>
            <div className="flex items-center gap-4">
               {/* Common Header Actions if needed */}
@@ -205,7 +211,8 @@ function App() {
              />
            )}
            {(currentView === 'calculator' || currentView === 'planning') && <Calculator view={currentView} />}
-           
+           {currentView === 'winter' && <WinterPlanningView />}
+
            <footer className="mt-auto py-8 text-center text-gray-400 text-xs border-t border-gray-200/50 mx-8">
               &copy; {new Date().getFullYear()} GPS Calc. O amanhã não se adivinha, se constrói.
            </footer>
