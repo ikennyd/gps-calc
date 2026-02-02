@@ -86,7 +86,13 @@ const WinterPlanningView: React.FC = () => {
 
   // Estado das metas mensais (apenas meses de vendas: Fev-Ago)
   const [monthlyTargets, setMonthlyTargets] = useState<MonthlyTarget[]>(
-    SALES_MONTHS.map(m => ({ month: m.value, monthLabel: m.label, targetUnits: 100, targetRevenue: 0 }))
+    SALES_MONTHS.map(m => ({
+      month: m.value,
+      monthLabel: m.label,
+      targetUnits: 100, // Faturado
+      targetRevenue: 0,
+      manufacturedUnits: 100 // Fabricado
+    }))
   );
 
   // Cenários salvos
@@ -172,14 +178,17 @@ const WinterPlanningView: React.FC = () => {
   // Totais
   const totals = useMemo(() => {
     const totalUnits = monthlyTargets.reduce((sum, t) => sum + t.targetUnits, 0);
+    const totalManufactured = monthlyTargets.reduce((sum, t) => sum + t.manufacturedUnits, 0);
     const price = salePrice === '' ? 0 : salePrice;
     const totalRevenue = totalUnits * price;
     const totalCost = totalUnits * unitCost;
     const totalProfit = totalUnits * profitPerUnit;
     const totalImmediate = totalUnits * immediateCost;
     const totalDeferred = totalUnits * deferredCost;
+    // Giro de estoque: quantas vezes o estoque girou (faturado / fabricado)
+    const inventoryTurnover = totalManufactured > 0 ? totalUnits / totalManufactured : 0;
 
-    return { totalUnits, totalRevenue, totalCost, totalProfit, totalImmediate, totalDeferred };
+    return { totalUnits, totalManufactured, totalRevenue, totalCost, totalProfit, totalImmediate, totalDeferred, inventoryTurnover };
   }, [monthlyTargets, salePrice, unitCost, profitPerUnit, immediateCost, deferredCost]);
 
   // Criar mapa de vendas por mês para fácil acesso
@@ -325,6 +334,14 @@ const WinterPlanningView: React.FC = () => {
     setMonthlyTargets(prev => prev.map(t =>
       t.month === month
         ? { ...t, targetUnits: units, targetRevenue: units * price }
+        : t
+    ));
+  };
+
+  const handleUpdateManufactured = (month: string, units: number) => {
+    setMonthlyTargets(prev => prev.map(t =>
+      t.month === month
+        ? { ...t, manufacturedUnits: units }
         : t
     ));
   };
@@ -657,23 +674,65 @@ const WinterPlanningView: React.FC = () => {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
               <h2 className="font-bold text-gray-900">Metas Mensais - Inverno 2026</h2>
-              <span className="text-xs text-gray-500">
-                Total: <strong className="text-gray-900">{totals.totalUnits.toLocaleString()} unid</strong>
-              </span>
+              <div className="flex items-center gap-4">
+                <span className="text-xs text-gray-500">
+                  Fab: <strong className="text-blue-600">{totals.totalManufactured.toLocaleString()}</strong>
+                </span>
+                <span className="text-xs text-gray-500">
+                  Fat: <strong className="text-green-600">{totals.totalUnits.toLocaleString()}</strong>
+                </span>
+                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold">
+                  Giro: {totals.inventoryTurnover.toFixed(1)}x
+                </span>
+              </div>
             </div>
 
-            <div className="p-5">
-              <div className="grid grid-cols-7 gap-2">
+            <div className="p-5 space-y-4">
+              {/* Header dos Meses */}
+              <div className="grid grid-cols-8 gap-2">
+                <div className="text-right pr-2"></div>
                 {monthlyTargets.map(target => (
                   <div key={target.month} className="text-center">
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2">
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase">
                       {target.monthLabel.substring(0, 3)}
                     </label>
+                  </div>
+                ))}
+              </div>
+
+              {/* Linha: Fabricado */}
+              <div className="grid grid-cols-8 gap-2 items-center">
+                <div className="text-right pr-2">
+                  <span className="text-xs font-bold text-blue-600 uppercase">Fabricado</span>
+                </div>
+                {monthlyTargets.map(target => (
+                  <div key={target.month} className="text-center">
+                    <input
+                      type="number"
+                      value={target.manufacturedUnits}
+                      onChange={(e) => handleUpdateManufactured(target.month, Number(e.target.value) || 0)}
+                      className="w-full text-center text-sm font-medium rounded border-blue-200 bg-blue-50 py-2 focus:ring-blue-500 focus:border-blue-500"
+                      min="0"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Separador */}
+              <div className="border-t-2 border-dashed border-gray-300"></div>
+
+              {/* Linha: Faturado */}
+              <div className="grid grid-cols-8 gap-2 items-center">
+                <div className="text-right pr-2">
+                  <span className="text-xs font-bold text-green-600 uppercase">Faturado</span>
+                </div>
+                {monthlyTargets.map(target => (
+                  <div key={target.month} className="text-center">
                     <input
                       type="number"
                       value={target.targetUnits}
                       onChange={(e) => handleUpdateTarget(target.month, Number(e.target.value) || 0)}
-                      className="w-full text-center text-sm font-medium rounded border-gray-200 py-2 focus:ring-black focus:border-black"
+                      className="w-full text-center text-sm font-medium rounded border-green-200 bg-green-50 py-2 focus:ring-green-500 focus:border-green-500"
                       min="0"
                     />
                     <div className="text-[10px] text-gray-400 mt-1">
@@ -681,6 +740,32 @@ const WinterPlanningView: React.FC = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Separador */}
+              <div className="border-t-2 border-dashed border-gray-300"></div>
+
+              {/* Linha: Giro de Estoque */}
+              <div className="grid grid-cols-8 gap-2 items-center">
+                <div className="text-right pr-2">
+                  <span className="text-xs font-bold text-purple-600 uppercase">Giro</span>
+                </div>
+                {monthlyTargets.map(target => {
+                  const giro = target.manufacturedUnits > 0
+                    ? target.targetUnits / target.manufacturedUnits
+                    : 0;
+                  return (
+                    <div key={target.month} className="text-center">
+                      <div className={`text-sm font-bold py-2 rounded ${
+                        giro >= 2 ? 'bg-purple-100 text-purple-700' :
+                        giro >= 1 ? 'bg-gray-100 text-gray-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {giro.toFixed(1)}x
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

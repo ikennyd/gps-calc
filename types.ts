@@ -112,8 +112,9 @@ export interface WinterProduct {
 export interface MonthlyTarget {
   month: string; // "2026-02", "2026-03", etc.
   monthLabel: string; // "Fevereiro", "Março", etc.
-  targetUnits: number;
+  targetUnits: number; // Faturado - unidades vendidas
   targetRevenue: number; // Calculado: targetUnits * salePrice
+  manufacturedUnits: number; // Fabricado - unidades produzidas
 }
 
 export interface WinterScenario {
