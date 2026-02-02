@@ -14,6 +14,31 @@ const TrashIcon = () => (
 const SnowflakeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="2" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="22"/><path d="m20 16-4-4 4-4"/><path d="m4 8 4 4-4 4"/><path d="m16 4-4 4-4-4"/><path d="m8 20 4-4 4 4"/></svg>
 );
+const ShoppingCartIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+);
+
+// Cores disponíveis para os tecidos
+const AVAILABLE_COLORS: { id: string; name: string; hex: string }[] = [
+  { id: 'preto', name: 'Preto', hex: '#1a1a1a' },
+  { id: 'cinza', name: 'Cinza', hex: '#6b7280' },
+  { id: 'marrom', name: 'Marrom', hex: '#78350f' },
+  { id: 'rosa', name: 'Rosa', hex: '#ec4899' },
+  { id: 'bege', name: 'Bege', hex: '#d4b896' },
+  { id: 'branco', name: 'Branco', hex: '#f5f5f5' },
+  { id: 'azul_marinho', name: 'Azul Marinho', hex: '#1e3a5f' },
+  { id: 'verde_militar', name: 'Verde Militar', hex: '#4a5d23' },
+  { id: 'vinho', name: 'Vinho', hex: '#722f37' },
+  { id: 'caramelo', name: 'Caramelo', hex: '#c68642' },
+];
+
+// Interface para cor selecionada com quantidade
+interface SelectedColor {
+  id: string;
+  name: string;
+  hex: string;
+  quantity: number; // quantidade de peças dessa cor
+}
 
 // Meses do Inverno 2026 (período de vendas)
 const SALES_MONTHS: { value: string; label: string }[] = [
@@ -73,6 +98,13 @@ const WinterPlanningView: React.FC = () => {
   const [newCostValue, setNewCostValue] = useState<number | ''>(0);
   const [newCostTerm, setNewCostTerm] = useState<number | ''>(0);
   const [newCostIsPerKg, setNewCostIsPerKg] = useState(false);
+
+  // Estado das cores selecionadas
+  const [selectedColors, setSelectedColors] = useState<SelectedColor[]>([
+    { id: 'preto', name: 'Preto', hex: '#1a1a1a', quantity: 50 },
+    { id: 'cinza', name: 'Cinza', hex: '#6b7280', quantity: 30 },
+    { id: 'marrom', name: 'Marrom', hex: '#78350f', quantity: 20 },
+  ]);
 
   // Carregar cenários salvos
   useEffect(() => {
@@ -227,6 +259,66 @@ const WinterPlanningView: React.FC = () => {
     });
   }, [salesByMonth, salePrice, immediateCost, costsByTerm]);
 
+  // =====================================
+  // CÁLCULOS DE COMPRAS E PEDIDOS
+  // =====================================
+
+  // Total de peças por cor
+  const totalPiecesByColor = useMemo(() => {
+    return selectedColors.reduce((sum, c) => sum + c.quantity, 0);
+  }, [selectedColors]);
+
+  // Quilos necessários de tecido (baseado no rendimento)
+  const totalKgNeeded = useMemo(() => {
+    const yield_ = kgYield === '' ? 1 : kgYield;
+    return totalPiecesByColor / yield_;
+  }, [totalPiecesByColor, kgYield]);
+
+  // Quilos por cor
+  const kgByColor = useMemo(() => {
+    const yield_ = kgYield === '' ? 1 : kgYield;
+    return selectedColors.map(color => ({
+      ...color,
+      kg: color.quantity / yield_
+    }));
+  }, [selectedColors, kgYield]);
+
+  // Pedido para fornecedores (valor total por item)
+  const supplierOrders = useMemo(() => {
+    const yield_ = kgYield === '' ? 1 : kgYield;
+
+    return costItems.map(item => {
+      let totalQuantity: number;
+      let unit: string;
+      let totalCost: number;
+
+      if (item.isPerKg) {
+        // Para itens por kg, calcular quilos necessários
+        totalQuantity = totalKgNeeded;
+        unit = 'kg';
+        totalCost = totalQuantity * item.costPerUnit;
+      } else {
+        // Para itens por unidade, multiplicar pelo total de peças
+        totalQuantity = totalPiecesByColor;
+        unit = 'unid';
+        totalCost = totalQuantity * item.costPerUnit;
+      }
+
+      return {
+        ...item,
+        totalQuantity,
+        unit,
+        totalCost,
+        paymentLabel: item.paymentTerm === 0 ? 'À Vista' : `${item.paymentTerm} dias`
+      };
+    });
+  }, [costItems, totalKgNeeded, totalPiecesByColor, kgYield]);
+
+  // Total do pedido
+  const totalOrderValue = useMemo(() => {
+    return supplierOrders.reduce((sum, item) => sum + item.totalCost, 0);
+  }, [supplierOrders]);
+
   // Handlers
   const handleUpdateTarget = (month: string, units: number) => {
     const price = salePrice === '' ? 0 : salePrice;
@@ -267,6 +359,25 @@ const WinterPlanningView: React.FC = () => {
 
   const handleRemoveCostItem = (id: string) => {
     setCostItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  // Handlers para cores
+  const handleAddColor = (color: typeof AVAILABLE_COLORS[0]) => {
+    if (selectedColors.find(c => c.id === color.id)) {
+      toast.warning('Cor já adicionada!');
+      return;
+    }
+    setSelectedColors(prev => [...prev, { ...color, quantity: 10 }]);
+  };
+
+  const handleRemoveColor = (colorId: string) => {
+    setSelectedColors(prev => prev.filter(c => c.id !== colorId));
+  };
+
+  const handleUpdateColorQuantity = (colorId: string, quantity: number) => {
+    setSelectedColors(prev => prev.map(c =>
+      c.id === colorId ? { ...c, quantity: Math.max(0, quantity) } : c
+    ));
   };
 
   const handleSaveScenario = () => {
@@ -732,25 +843,232 @@ const WinterPlanningView: React.FC = () => {
             </div>
           </div>
 
-          {/* Card: Salvar Cenário */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={scenarioName}
-                onChange={(e) => setScenarioName(e.target.value)}
-                placeholder="Nome do cenário (ex: Cenário Conservador)"
-                className="flex-1 rounded-lg border-gray-200 focus:ring-black focus:border-black"
-              />
-              <button
-                onClick={handleSaveScenario}
-                disabled={!scenarioName.trim()}
-                className="bg-black text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                Salvar Cenário
-              </button>
+        </div>
+      </div>
+
+      {/* =====================================
+          SEÇÃO DE COMPRAS E PEDIDOS
+          ===================================== */}
+      <div className="mt-8 max-w-7xl mx-auto">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="bg-purple-600 text-white p-3 rounded-lg">
+            <ShoppingCartIcon />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Pedido de Compras</h2>
+            <p className="text-gray-500 text-sm">Calcule os materiais e valores para seus fornecedores</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          {/* COLUNA ESQUERDA: Cores */}
+          <div className="lg:col-span-5 space-y-6">
+
+            {/* Card: Seleção de Cores */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-5 py-4 bg-purple-50 border-b border-purple-100 flex justify-between items-center">
+                <h3 className="font-bold text-purple-900">Cores do Tecido</h3>
+                <span className="text-xs text-purple-600 font-medium">
+                  {selectedColors.length} cores | {totalPiecesByColor} peças
+                </span>
+              </div>
+
+              {/* Cores selecionadas */}
+              <div className="divide-y divide-gray-100">
+                {selectedColors.map(color => (
+                  <div key={color.id} className="p-4 flex items-center gap-4 hover:bg-gray-50">
+                    <div
+                      className="w-8 h-8 rounded-full border-2 border-gray-200 shadow-sm"
+                      style={{ backgroundColor: color.hex }}
+                    ></div>
+                    <div className="flex-1">
+                      <span className="font-medium text-gray-900">{color.name}</span>
+                      <div className="text-xs text-gray-500">
+                        {(color.quantity / (kgYield === '' ? 1 : kgYield)).toFixed(1)} kg
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={color.quantity}
+                        onChange={(e) => handleUpdateColorQuantity(color.id, Number(e.target.value) || 0)}
+                        className="w-20 text-sm text-center rounded border-gray-200 py-1 px-2"
+                        min="0"
+                      />
+                      <span className="text-xs text-gray-400">peças</span>
+                      <button
+                        onClick={() => handleRemoveColor(color.id)}
+                        className="text-gray-400 hover:text-red-500 p-1"
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Adicionar cor */}
+              <div className="p-4 bg-gray-50 border-t border-gray-200">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Adicionar Cor</label>
+                <div className="flex flex-wrap gap-2">
+                  {AVAILABLE_COLORS.filter(c => !selectedColors.find(sc => sc.id === c.id)).map(color => (
+                    <button
+                      key={color.id}
+                      onClick={() => handleAddColor(color)}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 hover:border-purple-400 hover:bg-purple-50 transition-all"
+                    >
+                      <div
+                        className="w-4 h-4 rounded-full border border-gray-300"
+                        style={{ backgroundColor: color.hex }}
+                      ></div>
+                      <span className="text-xs font-medium text-gray-700">{color.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Card: Resumo de Quilos por Cor */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Quilos por Cor</h3>
+              <div className="space-y-3">
+                {kgByColor.map(color => (
+                  <div key={color.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-4 h-4 rounded-full border border-gray-200"
+                        style={{ backgroundColor: color.hex }}
+                      ></div>
+                      <span className="text-sm text-gray-700">{color.name}</span>
+                    </div>
+                    <span className="font-bold text-gray-900">{color.kg.toFixed(2)} kg</span>
+                  </div>
+                ))}
+                <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
+                  <span className="font-bold text-gray-900">Total de Tecido</span>
+                  <span className="text-xl font-black text-purple-600">{totalKgNeeded.toFixed(2)} kg</span>
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* COLUNA DIREITA: Pedido para Fornecedores */}
+          <div className="lg:col-span-7 space-y-6">
+
+            {/* Card: Pedido Detalhado */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-5 py-4 bg-gray-900 text-white flex justify-between items-center">
+                <h3 className="font-bold">Pedido para Fornecedores</h3>
+                <span className="text-xs text-gray-400">Baseado em {totalPiecesByColor} peças</span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Item</th>
+                      <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase">Qtd</th>
+                      <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase">Preço Unit</th>
+                      <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase">Total</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase">Prazo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {supplierOrders.map(item => (
+                      <tr key={item.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <span className="font-medium text-gray-900">{item.name}</span>
+                          {item.isPerKg && (
+                            <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">POR KG</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium text-gray-900">
+                          {item.totalQuantity.toFixed(item.unit === 'kg' ? 2 : 0)} {item.unit}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-600">
+                          R$ {item.costPerUnit.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900">
+                          R$ {item.totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`text-xs font-medium px-2 py-1 rounded ${
+                            item.paymentTerm === 0
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {item.paymentLabel}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-gray-900 text-white">
+                    <tr>
+                      <td colSpan={3} className="px-4 py-4 font-bold text-lg">
+                        TOTAL DO PEDIDO
+                      </td>
+                      <td className="px-4 py-4 text-right font-black text-xl text-[#7CFC00]">
+                        R$ {totalOrderValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            {/* Resumo de Pagamentos */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-xs font-bold text-red-800 uppercase">Pagamento À Vista</p>
+                <p className="text-xl font-black text-red-700">
+                  R$ {supplierOrders
+                    .filter(i => i.paymentTerm === 0)
+                    .reduce((sum, i) => sum + i.totalCost, 0)
+                    .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <p className="text-xs font-bold text-orange-800 uppercase">Pagamento A Prazo</p>
+                <p className="text-xl font-black text-orange-700">
+                  R$ {supplierOrders
+                    .filter(i => i.paymentTerm > 0)
+                    .reduce((sum, i) => sum + i.totalCost, 0)
+                    .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* =====================================
+          SEÇÃO DE CENÁRIOS
+          ===================================== */}
+      <div className="mt-8 max-w-7xl mx-auto space-y-6">
+
+        {/* Card: Salvar Cenário */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={scenarioName}
+              onChange={(e) => setScenarioName(e.target.value)}
+              placeholder="Nome do cenário (ex: Cenário Conservador)"
+              className="flex-1 rounded-lg border-gray-200 focus:ring-black focus:border-black"
+            />
+            <button
+              onClick={handleSaveScenario}
+              disabled={!scenarioName.trim()}
+              className="bg-black text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              Salvar Cenário
+            </button>
+          </div>
+        </div>
 
           {/* Card: Cenários Salvos */}
           {savedScenarios.length > 0 && (
@@ -789,7 +1107,6 @@ const WinterPlanningView: React.FC = () => {
             </div>
           )}
 
-        </div>
       </div>
     </div>
   );
