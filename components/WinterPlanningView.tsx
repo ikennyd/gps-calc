@@ -15,8 +15,8 @@ const SnowflakeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="2" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="22"/><path d="m20 16-4-4 4-4"/><path d="m4 8 4 4-4 4"/><path d="m16 4-4 4-4-4"/><path d="m8 20 4-4 4 4"/></svg>
 );
 
-// Meses do Inverno 2026
-const WINTER_MONTHS: { value: string; label: string }[] = [
+// Meses do Inverno 2026 (período de vendas)
+const SALES_MONTHS: { value: string; label: string }[] = [
   { value: '2026-02', label: 'Fevereiro' },
   { value: '2026-03', label: 'Março' },
   { value: '2026-04', label: 'Abril' },
@@ -24,6 +24,22 @@ const WINTER_MONTHS: { value: string; label: string }[] = [
   { value: '2026-06', label: 'Junho' },
   { value: '2026-07', label: 'Julho' },
   { value: '2026-08', label: 'Agosto' },
+];
+
+// Calendário completo do ano 2026
+const ALL_MONTHS: { value: string; label: string; short: string }[] = [
+  { value: '2026-01', label: 'Janeiro', short: 'Jan' },
+  { value: '2026-02', label: 'Fevereiro', short: 'Fev' },
+  { value: '2026-03', label: 'Março', short: 'Mar' },
+  { value: '2026-04', label: 'Abril', short: 'Abr' },
+  { value: '2026-05', label: 'Maio', short: 'Mai' },
+  { value: '2026-06', label: 'Junho', short: 'Jun' },
+  { value: '2026-07', label: 'Julho', short: 'Jul' },
+  { value: '2026-08', label: 'Agosto', short: 'Ago' },
+  { value: '2026-09', label: 'Setembro', short: 'Set' },
+  { value: '2026-10', label: 'Outubro', short: 'Out' },
+  { value: '2026-11', label: 'Novembro', short: 'Nov' },
+  { value: '2026-12', label: 'Dezembro', short: 'Dez' },
 ];
 
 // Ficha técnica inicial baseada nos dados do usuário
@@ -43,9 +59,9 @@ const WinterPlanningView: React.FC = () => {
   const [kgYield, setKgYield] = useState<number | ''>(3); // 1kg rende 3 unidades
   const [salePrice, setSalePrice] = useState<number | ''>(89.90);
 
-  // Estado das metas mensais
+  // Estado das metas mensais (apenas meses de vendas: Fev-Ago)
   const [monthlyTargets, setMonthlyTargets] = useState<MonthlyTarget[]>(
-    WINTER_MONTHS.map(m => ({ month: m.value, monthLabel: m.label, targetUnits: 100, targetRevenue: 0 }))
+    SALES_MONTHS.map(m => ({ month: m.value, monthLabel: m.label, targetUnits: 100, targetRevenue: 0 }))
   );
 
   // Cenários salvos
@@ -134,27 +150,74 @@ const WinterPlanningView: React.FC = () => {
     return { totalUnits, totalRevenue, totalCost, totalProfit, totalImmediate, totalDeferred };
   }, [monthlyTargets, salePrice, unitCost, profitPerUnit, immediateCost, deferredCost]);
 
-  // Fluxo de caixa mensal
+  // Criar mapa de vendas por mês para fácil acesso
+  const salesByMonth = useMemo(() => {
+    const map: { [key: string]: number } = {};
+    monthlyTargets.forEach(t => {
+      map[t.month] = t.targetUnits;
+    });
+    return map;
+  }, [monthlyTargets]);
+
+  // Calcular prazo máximo em meses
+  const maxPaymentTermMonths = useMemo(() => {
+    const maxDays = Math.max(...costItems.map(item => item.paymentTerm), 0);
+    return Math.ceil(maxDays / 30);
+  }, [costItems]);
+
+  // Calcular custos por prazo específico
+  const costsByTerm = useMemo(() => {
+    const yield_ = kgYield === '' ? 1 : kgYield;
+    const terms: { [days: number]: number } = {};
+
+    costItems.forEach(item => {
+      const cost = item.isPerKg ? item.costPerUnit / yield_ : item.costPerUnit;
+      if (!terms[item.paymentTerm]) {
+        terms[item.paymentTerm] = 0;
+      }
+      terms[item.paymentTerm] += cost;
+    });
+
+    return terms;
+  }, [costItems, kgYield]);
+
+  // Fluxo de caixa mensal - ANO COMPLETO
   const cashFlow = useMemo((): CashFlowEntry[] => {
     const price = salePrice === '' ? 0 : salePrice;
     let accumulated = 0;
 
-    return monthlyTargets.map((target, index) => {
-      const revenue = target.targetUnits * price;
-      const immediatePayments = target.targetUnits * immediateCost;
+    return ALL_MONTHS.map((monthInfo) => {
+      // Receita: só tem nos meses de venda (Fev-Ago)
+      const units = salesByMonth[monthInfo.value] || 0;
+      const revenue = units * price;
 
-      // Pagamentos a prazo: aparecem 3 meses depois (90 dias)
+      // Pagamentos à vista: no mesmo mês da venda
+      const immediatePayments = units * immediateCost;
+
+      // Pagamentos a prazo: aparecem X meses depois conforme prazo de cada item
       let deferredPayments = 0;
-      if (index >= 3) {
-        deferredPayments = monthlyTargets[index - 3].targetUnits * deferredCost;
-      }
+
+      // Para cada prazo de pagamento, verificar se há vendas X meses atrás
+      Object.entries(costsByTerm).forEach(([days, costPerUnit]) => {
+        if (Number(days) === 0) return; // À vista já foi contado
+
+        const monthsDelay = Math.ceil(Number(days) / 30);
+        const monthIndex = ALL_MONTHS.findIndex(m => m.value === monthInfo.value);
+        const sourceMonthIndex = monthIndex - monthsDelay;
+
+        if (sourceMonthIndex >= 0 && sourceMonthIndex < ALL_MONTHS.length) {
+          const sourceMonth = ALL_MONTHS[sourceMonthIndex].value;
+          const sourceUnits = salesByMonth[sourceMonth] || 0;
+          deferredPayments += sourceUnits * costPerUnit;
+        }
+      });
 
       const netCashFlow = revenue - immediatePayments - deferredPayments;
       accumulated += netCashFlow;
 
       return {
-        month: target.month,
-        monthLabel: target.monthLabel,
+        month: monthInfo.value,
+        monthLabel: monthInfo.label,
         revenue,
         immediatePayments,
         deferredPayments,
@@ -162,7 +225,7 @@ const WinterPlanningView: React.FC = () => {
         accumulatedCashFlow: accumulated
       };
     });
-  }, [monthlyTargets, salePrice, immediateCost, deferredCost]);
+  }, [salesByMonth, salePrice, immediateCost, costsByTerm]);
 
   // Handlers
   const handleUpdateTarget = (month: string, units: number) => {
@@ -511,74 +574,132 @@ const WinterPlanningView: React.FC = () => {
             </div>
           </div>
 
-          {/* Card: Gráfico de Fluxo de Caixa */}
+          {/* Card: Gráfico de Fluxo de Caixa - Ano Completo */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 bg-gray-50 border-b border-gray-100">
-              <h2 className="font-bold text-gray-900">Fluxo de Caixa - Visualização</h2>
-              <p className="text-xs text-gray-500 mt-1">Entradas (verde) vs Saídas (vermelho/laranja)</p>
+              <h2 className="font-bold text-gray-900">Fluxo de Caixa 2026 - Ano Completo</h2>
+              <p className="text-xs text-gray-500 mt-1">Vendas (Fev-Ago) + Pagamentos de dívidas até quitação</p>
             </div>
 
             <div className="p-5">
               {/* Legenda */}
-              <div className="flex gap-4 mb-4 text-xs">
+              <div className="flex flex-wrap gap-4 mb-4 text-xs">
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded bg-green-500"></span>
                   Faturamento
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded bg-red-500"></span>
-                  À Vista
+                  Pagamento À Vista
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded bg-orange-500"></span>
-                  A Prazo
+                  Pagamento A Prazo
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded bg-blue-500"></span>
+                  Saldo Acumulado
                 </span>
               </div>
 
-              {/* Gráfico de Barras */}
-              <div className="space-y-4">
-                {cashFlow.map(entry => (
-                  <div key={entry.month} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-gray-700 w-16">{entry.monthLabel.substring(0, 3)}</span>
-                      <span className={`font-bold ${entry.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {entry.netCashFlow >= 0 ? '+' : ''}R$ {entry.netCashFlow.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
-                      </span>
-                    </div>
+              {/* Gráfico de Barras - Ano Completo */}
+              <div className="space-y-3">
+                {cashFlow.map((entry, index) => {
+                  const isSalesMonth = entry.revenue > 0;
+                  const hasPayments = entry.immediatePayments > 0 || entry.deferredPayments > 0;
+                  const isInactive = !isSalesMonth && !hasPayments;
 
-                    {/* Barra de Entrada (Verde) */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-gray-400 w-12 text-right">Entrada</span>
-                      <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-green-500 rounded-full transition-all duration-300"
-                          style={{ width: `${(entry.revenue / maxValue) * 100}%` }}
-                        ></div>
+                  return (
+                    <div
+                      key={entry.month}
+                      className={`p-3 rounded-lg border transition-all ${
+                        isSalesMonth
+                          ? 'bg-green-50 border-green-200'
+                          : hasPayments
+                            ? 'bg-orange-50 border-orange-200'
+                            : 'bg-gray-50 border-gray-100 opacity-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-bold text-sm ${isSalesMonth ? 'text-green-800' : hasPayments ? 'text-orange-800' : 'text-gray-400'}`}>
+                            {ALL_MONTHS[index].short}
+                          </span>
+                          {isSalesMonth && (
+                            <span className="text-[10px] bg-green-600 text-white px-1.5 py-0.5 rounded font-bold">VENDAS</span>
+                          )}
+                          {!isSalesMonth && hasPayments && (
+                            <span className="text-[10px] bg-orange-600 text-white px-1.5 py-0.5 rounded font-bold">DÍVIDAS</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-xs font-bold ${entry.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {entry.netCashFlow >= 0 ? '+' : ''}R$ {entry.netCashFlow.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                          </span>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                            entry.accumulatedCashFlow >= 0 ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                            Saldo: R$ {entry.accumulatedCashFlow.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-[10px] text-gray-600 w-20 text-right">
-                        R$ {entry.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
-                      </span>
-                    </div>
 
-                    {/* Barra de Saída (Vermelho + Laranja) */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-gray-400 w-12 text-right">Saída</span>
-                      <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden flex">
-                        <div
-                          className="h-full bg-red-500 transition-all duration-300"
-                          style={{ width: `${(entry.immediatePayments / maxValue) * 100}%` }}
-                        ></div>
-                        <div
-                          className="h-full bg-orange-500 transition-all duration-300"
-                          style={{ width: `${(entry.deferredPayments / maxValue) * 100}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-[10px] text-gray-600 w-20 text-right">
-                        R$ {(entry.immediatePayments + entry.deferredPayments).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
-                      </span>
+                      {!isInactive && (
+                        <div className="space-y-1">
+                          {/* Barra de Entrada (Verde) */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-gray-500 w-14 text-right">Entrada</span>
+                            <div className="flex-1 h-4 bg-gray-200/50 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-green-500 rounded-full transition-all duration-300"
+                                style={{ width: `${maxValue > 0 ? (entry.revenue / maxValue) * 100 : 0}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-[10px] text-gray-600 w-20 text-right font-medium">
+                              R$ {entry.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                            </span>
+                          </div>
+
+                          {/* Barra de Saída (Vermelho + Laranja) */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-gray-500 w-14 text-right">Saída</span>
+                            <div className="flex-1 h-4 bg-gray-200/50 rounded-full overflow-hidden flex">
+                              <div
+                                className="h-full bg-red-500 transition-all duration-300"
+                                style={{ width: `${maxValue > 0 ? (entry.immediatePayments / maxValue) * 100 : 0}%` }}
+                              ></div>
+                              <div
+                                className="h-full bg-orange-500 transition-all duration-300"
+                                style={{ width: `${maxValue > 0 ? (entry.deferredPayments / maxValue) * 100 : 0}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-[10px] text-gray-600 w-20 text-right font-medium">
+                              R$ {(entry.immediatePayments + entry.deferredPayments).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
+                  );
+                })}
+              </div>
+
+              {/* Resumo Final */}
+              <div className="mt-6 p-4 bg-gray-900 rounded-lg text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase font-bold">Saldo Final em Dezembro</p>
+                    <p className={`text-2xl font-black ${cashFlow[11]?.accumulatedCashFlow >= 0 ? 'text-[#7CFC00]' : 'text-red-400'}`}>
+                      R$ {(cashFlow[11]?.accumulatedCashFlow || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
                   </div>
-                ))}
+                  <div className="text-right">
+                    <p className="text-xs text-gray-400 uppercase font-bold">Status</p>
+                    <p className={`text-lg font-bold ${cashFlow[11]?.accumulatedCashFlow >= 0 ? 'text-[#7CFC00]' : 'text-red-400'}`}>
+                      {cashFlow[11]?.accumulatedCashFlow >= 0 ? 'DÍVIDAS QUITADAS' : 'SALDO NEGATIVO'}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
