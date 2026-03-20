@@ -66,13 +66,14 @@ export const PLATFORMS: PlatformRule[] = [
   },
   {
     id: 'tiktok',
-    name: 'Tik Tok',
+    name: 'TikTok',
     type: 'Shop',
-    defaultCommission: 6,
-    defaultFixedFee: 2.00,
-    alwaysApplyFixed: true,
+    defaultCommission: 6,      // 6% sobre o valor do pedido (limitado a R$50/pedido)
+    defaultFixedFee: 2.00,     // R$2,00 fixo apenas para produtos abaixo de R$79
+    threshold: 79,             // Taxa fixa só se aplica abaixo de R$79
+    alwaysApplyFixed: false,
     color: '#000000',
-    logoUrl: "https://upload.wikimedia.org/wikipedia/en/thumb/a/a9/TikTok_logo.svg/200px-TikTok_logo.svg.png" // TikTok Note
+    logoUrl: "https://upload.wikimedia.org/wikipedia/en/thumb/a/a9/TikTok_logo.svg/200px-TikTok_logo.svg.png"
   }
 ];
 
