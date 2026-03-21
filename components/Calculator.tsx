@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { PLATFORMS, INITIAL_STATE, ML_SHIPPING_TABLE_2026 } from '../constants';
+import { PLATFORMS, INITIAL_STATE, ML_SHIPPING_TABLE_2026 } from '../constants'; // ML_SHIPPING_TABLE_2026 used in weight <select>
 import { CalculatorState, CalculationResult, SavedSimulation, PlanningScenario } from '../types';
+import { getMLShippingCost, calculateResults, calculatePlanningScenario } from '../lib/calculations';
 import InputCurrency from './InputCurrency';
 import ResultsChart from './ResultsChart';
 import InfoTooltip from './InfoTooltip';
@@ -11,81 +12,6 @@ import ComparisonTable from './ComparisonTable';
 const TrashIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
 );
-
-// --- HELPER: CÁLCULO DE FRETE ML 2026 ---
-const getMLShippingCost = (salePrice: number, weight: number) => {
-    // Definir Faixa de Preço (Index 0-7)
-    let priceIndex = 0;
-    if (salePrice < 19) priceIndex = 0;
-    else if (salePrice < 49) priceIndex = 1;
-    else if (salePrice < 79) priceIndex = 2;
-    else if (salePrice < 100) priceIndex = 3;
-    else if (salePrice < 120) priceIndex = 4;
-    else if (salePrice < 150) priceIndex = 5;
-    else if (salePrice < 200) priceIndex = 6;
-    else priceIndex = 7;
-
-    // Achar peso na tabela (o primeiro valor >= ao peso informado)
-    const weights = Object.keys(ML_SHIPPING_TABLE_2026).map(Number).sort((a,b) => a-b);
-    const targetWeight = weights.find(w => w >= weight) || 999.0;
-    
-    return ML_SHIPPING_TABLE_2026[targetWeight][priceIndex] || 0;
-};
-
-// --- HELPER FUNCTION: CÁLCULO DE CENÁRIO ---
-const calculateScenarioResults = (inputs: CalculatorState, platformId: string, units: number | '') => {
-  const platform = PLATFORMS.find(p => p.id === platformId) || PLATFORMS[0];
-  const safeNum = (val: number | '') => (val === '' ? 0 : val);
-
-  const cost = safeNum(inputs.cost);
-  const salePrice = safeNum(inputs.salePrice);
-  const quantity = inputs.isKit ? safeNum(inputs.quantity) : 1;
-  const taxRate = safeNum(inputs.taxRate);
-  const marketingRate = safeNum(inputs.marketingRate);
-  const otherCosts = safeNum(inputs.otherCosts);
-  const weight = safeNum(inputs.weight);
-
-  // Lógica de Frete 2026
-  let shippingCost = safeNum(inputs.shippingCost);
-  if (platformId.startsWith('ml_')) {
-      shippingCost = getMLShippingCost(salePrice, weight);
-  } else if (platformId === 'shopee_free') {
-      shippingCost = 0;
-  }
-
-  // Comissão
-  const commissionRate = inputs.customCommission ?? platform.defaultCommission;
-  const commissionValue = salePrice * (commissionRate / 100);
-
-  // Taxa Fixa
-  let fixedFeeValue = 0;
-  if (platform.alwaysApplyFixed) {
-    fixedFeeValue = platform.defaultFixedFee;
-  } else if (platform.threshold) {
-    if (salePrice < platform.threshold) {
-      fixedFeeValue = platform.defaultFixedFee;
-    }
-  }
-
-  // Outros Custos
-  const taxValue = salePrice * (taxRate / 100);
-  const marketingValue = salePrice * (marketingRate / 100);
-
-  // Totais
-  const totalDeductions = commissionValue + fixedFeeValue + taxValue + marketingValue + shippingCost + otherCosts;
-  const totalProductCost = cost * quantity;
-  const profitPerUnit = salePrice - totalDeductions - totalProductCost;
-
-  const safeUnits = units === '' ? 0 : units;
-  const projectedRevenue = salePrice * safeUnits;
-  const totalCost = (totalProductCost + totalDeductions) * safeUnits;
-  const projectedProfit = profitPerUnit * safeUnits;
-
-  const margin = salePrice > 0 ? (profitPerUnit / salePrice) * 100 : 0;
-  const roi = totalProductCost > 0 ? (profitPerUnit / totalProductCost) * 100 : 0;
-
-  return { projectedRevenue, totalCost, projectedProfit, margin, roi };
-};
 
 interface CalculatorProps {
   view: 'calculator' | 'planning';
@@ -132,45 +58,10 @@ const Calculator: React.FC<CalculatorProps> = ({ view }) => {
     }
   }, [autoShippingCost, isMercadoLivre]);
 
-  const results: CalculationResult = useMemo(() => {
-    const getVal = (val: number | '') => (val === '' ? 0 : val);
-    const cost = getVal(inputs.cost);
-    const salePrice = getVal(inputs.salePrice);
-    const shippingCost = getVal(inputs.shippingCost);
-    const taxRate = getVal(inputs.taxRate);
-    const marketingRate = getVal(inputs.marketingRate);
-    const otherCosts = getVal(inputs.otherCosts);
-    const quantity = inputs.isKit ? getVal(inputs.quantity) : 1;
-    const commissionRate = inputs.customCommission !== null ? inputs.customCommission : selectedPlatform.defaultCommission;
-    const commissionValue = salePrice * (commissionRate / 100);
-
-    let fixedFeeValue = 0;
-    if (selectedPlatform.alwaysApplyFixed) {
-      fixedFeeValue = selectedPlatform.defaultFixedFee;
-    } else if (selectedPlatform.threshold) {
-      if (salePrice < selectedPlatform.threshold) {
-        fixedFeeValue = selectedPlatform.defaultFixedFee;
-      }
-    }
-
-    const taxValue = salePrice * (taxRate / 100);
-    const marketingValue = salePrice * (marketingRate / 100); 
-    const totalProductCost = cost * quantity;
-    const totalDeductions = commissionValue + fixedFeeValue + taxValue + marketingValue + shippingCost + otherCosts;
-    const profit = salePrice - totalDeductions - totalProductCost;
-    const margin = salePrice > 0 ? (profit / salePrice) * 100 : 0;
-    const roi = totalProductCost > 0 ? (profit / totalProductCost) * 100 : 0;
-    
-    const variableRate = (commissionRate + taxRate + marketingRate) / 100;
-    const hardCosts = totalProductCost + shippingCost + otherCosts + (salePrice < (selectedPlatform.threshold || 0) ? selectedPlatform.defaultFixedFee : 0);
-    const breakEven = hardCosts / (1 - variableRate);
-
-    return {
-      commissionValue, fixedFeeValue, taxValue, marketingValue,
-      totalDeductions, netRevenue: salePrice - totalDeductions,
-      profit, margin, roi, breakEven, totalProductCost
-    };
-  }, [inputs, selectedPlatform]);
+  const results: CalculationResult = useMemo(
+    () => calculateResults(inputs, selectedPlatformId),
+    [inputs, selectedPlatformId]
+  );
 
   const handleAddPlanningScenario = () => {
     if (!productName.trim()) { alert("Insira o nome do produto."); return; }
@@ -178,7 +69,7 @@ const Calculator: React.FC<CalculatorProps> = ({ view }) => {
       id: crypto.randomUUID(), createdAt: Date.now(),
       productName: productName.trim(), platformId: selectedPlatformId,
       targetUnits: targetVolume, savedInputs: { ...inputs }, 
-      currentResults: calculateScenarioResults({ ...inputs }, selectedPlatformId, targetVolume)
+      currentResults: calculatePlanningScenario({ ...inputs }, selectedPlatformId, targetVolume)
     };
     const updated = [newScenario, ...planningScenarios];
     setPlanningScenarios(updated);
