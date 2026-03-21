@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { PLATFORMS, INITIAL_STATE, ML_SHIPPING_TABLE_2026 } from '../constants'; // ML_SHIPPING_TABLE_2026 used in weight <select>
+import { PLATFORMS, INITIAL_STATE, ML_SHIPPING_TABLE_2026, TAX_REGIMES } from '../constants'; // ML_SHIPPING_TABLE_2026 used in weight <select>
 import { CalculatorState, CalculationResult, SavedSimulation, PlanningScenario } from '../types';
 import { getMLShippingCost, calculateResults, calculatePlanningScenario } from '../lib/calculations';
 import InputCurrency from './InputCurrency';
@@ -79,6 +79,17 @@ const Calculator: React.FC<CalculatorProps> = ({ view }) => {
 
   const handleInputChange = (field: keyof CalculatorState, value: any) => {
     setInputs(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleTaxRegimeChange = (regimeId: string) => {
+    const regime = TAX_REGIMES.find(r => r.id === regimeId);
+    if (!regime) return;
+    setInputs(prev => ({
+      ...prev,
+      taxRegime: regime.id,
+      // Auto-fill taxRate for Simples and Lucro Presumido; leave it editable for Lucro Real
+      ...(regime.id !== 'lucro_real' ? { taxRate: regime.rate } : {}),
+    }));
   };
 
   const currentCommission = inputs.customCommission ?? selectedPlatform.defaultCommission;
@@ -170,7 +181,38 @@ const Calculator: React.FC<CalculatorProps> = ({ view }) => {
                  
                  <InputCurrency label={isMercadoLivre ? "Custo Envios (Auto)" : "Frete (Unitário)"} value={inputs.shippingCost} onChange={(val) => handleInputChange('shippingCost', val)} disabled={isMercadoLivre} />
                  <InputCurrency label="Extras (Embalagem)" value={inputs.otherCosts} onChange={(val) => handleInputChange('otherCosts', val)} />
-                 <InputCurrency label="Impostos (%)" value={inputs.taxRate} onChange={(val) => handleInputChange('taxRate', val)} prefix="" suffix="%" />
+                 {/* Tax Regime selector */}
+                 <div className="sm:col-span-2 flex flex-col gap-1.5">
+                   <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Regime Tributário</label>
+                   <div className="grid grid-cols-3 gap-2">
+                     {TAX_REGIMES.map(regime => (
+                       <button
+                         key={regime.id}
+                         type="button"
+                         onClick={() => handleTaxRegimeChange(regime.id)}
+                         title={regime.description}
+                         className={`py-2.5 px-3 rounded-lg border text-left transition-all duration-200 ${
+                           inputs.taxRegime === regime.id
+                             ? 'border-black ring-1 ring-black bg-black text-white'
+                             : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                         }`}
+                       >
+                         <span className="block text-[10px] font-bold uppercase tracking-wider opacity-70 mb-0.5">
+                           {regime.id === 'lucro_real' ? 'Customizado' : `${regime.rate}%`}
+                         </span>
+                         <span className="text-xs font-semibold leading-tight">{regime.label}</span>
+                       </button>
+                     ))}
+                   </div>
+                 </div>
+                 <InputCurrency
+                   label="Impostos (%)"
+                   value={inputs.taxRate}
+                   onChange={(val) => handleInputChange('taxRate', val)}
+                   prefix=""
+                   suffix="%"
+                   disabled={inputs.taxRegime !== 'lucro_real'}
+                 />
                  <InputCurrency label="Ads (%)" value={inputs.marketingRate} onChange={(val) => handleInputChange('marketingRate', val)} prefix="" suffix="%" />
                </div>
               </div>

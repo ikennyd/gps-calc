@@ -25,15 +25,18 @@ export interface CalculationResult {
   totalProductCost: number; // Added to track cost * qty
 }
 
+export type TaxRegime = 'simples_nacional' | 'lucro_presumido' | 'lucro_real';
+
 export interface CalculatorState {
   cost: number | ''; // Allow empty string for input handling
   salePrice: number | '';
   shippingCost: number | '';
   taxRate: number | '';
+  taxRegime: TaxRegime; // Regime tributário (Simples, Presumido, Real)
   marketingRate: number | '';
   otherCosts: number | '';
   weight: number | ''; // NOVO: Peso para frete ML 2026
-  customCommission: number | null; 
+  customCommission: number | null;
   isKit: boolean; // New feature
   quantity: number | ''; // New feature
 }

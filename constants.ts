@@ -1,5 +1,5 @@
 
-import { PlatformRule } from './types';
+import { PlatformRule, TaxRegime } from './types';
 
 export const PLATFORMS: PlatformRule[] = [
   {
@@ -76,13 +76,42 @@ export const PLATFORMS: PlatformRule[] = [
   }
 ];
 
+export interface TaxRegimeOption {
+  id: TaxRegime;
+  label: string;
+  rate: number;
+  description: string;
+}
+
+export const TAX_REGIMES: TaxRegimeOption[] = [
+  {
+    id: 'simples_nacional',
+    label: 'Simples Nacional',
+    rate: 4.0,
+    description: 'Alíquota efetiva ~4% (Anexo I — Comércio)',
+  },
+  {
+    id: 'lucro_presumido',
+    label: 'Lucro Presumido',
+    rate: 11.33,
+    description: 'IRPJ 2,4% + CSLL 1,08% + PIS 0,65% + COFINS 3% + ISS/IPI varia (~11,33%)',
+  },
+  {
+    id: 'lucro_real',
+    label: 'Lucro Real',
+    rate: 0,
+    description: 'Alíquota personalizada — informe o valor exato abaixo',
+  },
+];
+
 export const INITIAL_STATE = {
   cost: 15.00,
   salePrice: 35.00,
   shippingCost: 0,
-  taxRate: 4.0, 
-  marketingRate: 5.0, 
-  otherCosts: 1.75, 
+  taxRate: 4.0,
+  taxRegime: 'simples_nacional' as TaxRegime,
+  marketingRate: 5.0,
+  otherCosts: 1.75,
   weight: 0.3,
   customCommission: null,
   isKit: false,
