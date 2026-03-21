@@ -2,12 +2,41 @@
 import { PlatformRule, TaxRegime } from './types';
 import mlShippingRaw from './data/ml-shipping.json';
 
+/**
+ * TAXAS MERCADO LIVRE — VALIDAÇÃO (Março 2026)
+ *
+ * Fonte oficial: https://vendedores.mercadolivre.com.br/nota/taxas-e-tarifas
+ *
+ * As comissões do ML variam por CATEGORIA de produto. Os valores abaixo são os
+ * padrões mais comuns (categoria Geral / Outros). O vendedor pode substituir
+ * em cada simulação usando o campo "Comissão (%)" personalizado.
+ *
+ * Listagem CLÁSSICA (ml_classic):
+ *   - Comissão padrão: 14% ✅ (faixa real: 10%–16% por categoria)
+ *   - Taxa fixa: R$ 6,75 para itens < R$ 79 ✅ (confirmado na documentação ML)
+ *   - Taxa fixa: R$ 0 para itens ≥ R$ 79 ✅
+ *
+ * Listagem PREMIUM (ml_premium):
+ *   - Comissão padrão: 19% ✅ (faixa real: 16%–21% por categoria)
+ *   - Taxa fixa: mesma regra do Clássico ✅
+ *
+ * Categorias com comissão diferente (exemplos):
+ *   - Eletrônicos/informática: ~13%–15% (Clássico) / ~18%–20% (Premium)
+ *   - Moda/vestuário:          ~15%–16% (Clássico) / ~20%–21% (Premium)
+ *   - Casa e jardim:           ~13%–14% (Clássico) / ~18%–19% (Premium)
+ *
+ * Use o campo "Comissão (%)" no calculador para ajustar ao valor exato da sua categoria.
+ */
 export const PLATFORMS: PlatformRule[] = [
   {
     id: 'ml_classic',
     name: 'Mercado Livre',
     type: 'Clássico',
+    // 14% é a comissão padrão mais comum no ML Brasil (Clássico).
+    // Faixa real por categoria: 10%–16%. Ajuste via campo personalizado se necessário.
     defaultCommission: 14,
+    // R$ 6,75 é a taxa fixa oficial do ML para itens com preço abaixo de R$ 79.
+    // Fonte: https://vendedores.mercadolivre.com.br/nota/taxas-e-tarifas
     defaultFixedFee: 6.75,
     threshold: 79,
     alwaysApplyFixed: false,
@@ -18,6 +47,8 @@ export const PLATFORMS: PlatformRule[] = [
     id: 'ml_premium',
     name: 'Mercado Livre',
     type: 'Premium',
+    // 19% é a comissão padrão mais comum no ML Brasil (Premium).
+    // Faixa real por categoria: 16%–21%. Ajuste via campo personalizado se necessário.
     defaultCommission: 19,
     defaultFixedFee: 6.75,
     threshold: 79,
