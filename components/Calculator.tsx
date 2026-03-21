@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { PLATFORMS, INITIAL_STATE, ML_SHIPPING_TABLE_2026, TAX_REGIMES } from '../constants'; // ML_SHIPPING_TABLE_2026 used in weight <select>
 import { CalculatorState, CalculationResult, SavedSimulation, PlanningScenario } from '../types';
 import { getMLShippingCost, calculateResults, calculatePlanningScenario } from '../lib/calculations';
+import { exportSimulationToPDF } from '../lib/export-pdf';
 import InputCurrency from './InputCurrency';
 import ResultsChart from './ResultsChart';
 import InfoTooltip from './InfoTooltip';
@@ -11,6 +12,9 @@ import ComparisonTable from './ComparisonTable';
 // Icons
 const TrashIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+);
+const DownloadIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
 );
 
 interface CalculatorProps {
@@ -222,7 +226,17 @@ const Calculator: React.FC<CalculatorProps> = ({ view }) => {
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Nome do Produto</label>
                     <input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="Ex: Produto X" className="block w-full rounded-lg border-0 py-3 px-4 ring-1 ring-inset ring-gray-200 placeholder:text-gray-300 focus:ring-2 focus:ring-black sm:text-base font-medium bg-white text-gray-900" />
                  </div>
-                 <button onClick={handleAddPlanningScenario} disabled={!productName.trim()} className="w-full sm:w-auto bg-black text-white px-6 py-3.5 rounded-lg font-bold text-sm uppercase tracking-wider hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 transition-colors">Salvar</button>
+                 <div className="flex gap-3 w-full sm:w-auto">
+                   <button
+                     onClick={() => exportSimulationToPDF(inputs, results, selectedPlatformId, productName)}
+                     title="Exportar simulação em PDF"
+                     className="flex items-center gap-2 px-5 py-3.5 rounded-lg font-bold text-sm uppercase tracking-wider border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+                   >
+                     <DownloadIcon />
+                     PDF
+                   </button>
+                   <button onClick={handleAddPlanningScenario} disabled={!productName.trim()} className="flex-1 sm:flex-none bg-black text-white px-6 py-3.5 rounded-lg font-bold text-sm uppercase tracking-wider hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 transition-colors">Salvar</button>
+                 </div>
               </div>
             </div>
 
